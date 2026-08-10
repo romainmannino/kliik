@@ -3,6 +3,7 @@ import "./globals.css";
 import "./multiplayer.css";
 import "./upgrade.css";
 import "./stable.css";
+import PresenceGuard from "./PresenceGuard";
 
 export const metadata: Metadata = {
   title: "KLIIK — mini-jeux, gros défis",
@@ -19,7 +20,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>{children}<PresenceGuard/></body>
     </html>
   );
 }
