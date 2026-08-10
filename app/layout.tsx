@@ -5,6 +5,7 @@ import "./upgrade.css";
 import "./stable.css";
 import "./home-hotfix.css";
 import "./f1-brand.css";
+import "./f1-final.css";
 import PresenceGuard from "./PresenceGuard";
 
 export const metadata: Metadata = {
