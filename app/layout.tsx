@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./multiplayer.css";
+import "./upgrade.css";
 
 export const metadata: Metadata = {
   title: "KLIIK — mini-jeux, gros défis",
