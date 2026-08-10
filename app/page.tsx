@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type GameId = 'ten' | 'f1' | 'tap' | 'memory';
 
@@ -16,7 +16,7 @@ const GAMES: GameMeta[] = [
   { id: 'ten', title: '10.000', subtitle: 'Arrête le chrono pile à 10 secondes.', icon: '⏱️', tone: 'yellow' },
   { id: 'f1', title: 'F1 START', subtitle: 'Attends l’extinction des 5 feux. Puis frappe.', icon: '🏎️', tone: 'white' },
   { id: 'tap', title: 'TAP 30', subtitle: 'Le plus de clics en 30 secondes.', icon: '👆', tone: 'pink' },
-  { id: 'memory', title: 'MÉMO', subtitle: 'Mémorise les couleurs et reproduis la suite.', icon: '🧠', tone: 'blue' },
+  { id: 'memory', title: 'MÉMO', subtitle: 'Mémorise 10 couleurs et replace-les.', icon: '🧠', tone: 'blue' },
 ];
 
 export default function Home() {
@@ -41,17 +41,9 @@ export default function Home() {
         <GameRouter id={activeGame} onBack={() => setActiveGame(null)} />
       ) : (
         <>
-          <section className="hero">
-            <div className="heroCard">
-              <h1>MINI JEUX.<br />MAXI DÉFIS.</h1>
-              <p>Joue maintenant. Défie tes potes. Bientôt : crée ta room, choisis tes jeux et lance la compétition.</p>
-              <div className="heroDots"><i /><i /><i /></div>
-            </div>
-            <div className="scoreCard">
-              <span className="eyebrow">KLIIK du jour</span>
-              <strong>4</strong>
-              <small>jeux instantanés · zéro compte</small>
-            </div>
+          <section className="heroSimple">
+            <h1>MINI JEUX.<br />MAXI DÉFIS.</h1>
+            <p>Joue maintenant. Défie tes potes. Bientôt : crée ta room, choisis tes jeux et lance la compétition.</p>
           </section>
 
           <div className="sectionHead">
@@ -173,62 +165,145 @@ function F1Start() {
 function Tap30() {
   const [count, setCount] = useState(0);
   const [time, setTime] = useState(30);
-  const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle');
+  const [replayReady, setReplayReady] = useState(false);
 
   useEffect(() => {
-    if (!running) return;
+    if (phase !== 'running') return;
     const id = window.setInterval(() => setTime((t) => {
-      if (t <= 1) { clearInterval(id); setRunning(false); return 0; }
+      if (t <= 1) {
+        clearInterval(id);
+        setPhase('done');
+        setReplayReady(false);
+        window.setTimeout(() => setReplayReady(true), 1000);
+        return 0;
+      }
       return t - 1;
     }), 1000);
     return () => clearInterval(id);
-  }, [running]);
+  }, [phase]);
 
-  const start = () => { setCount(0); setTime(30); setRunning(true); };
+  const start = () => { setCount(0); setTime(30); setReplayReady(false); setPhase('running'); };
+
   return (
-    <div className="gameStage">
+    <div className="gameStage tapStage">
       <h2>👆 Tap 30</h2>
-      <div className="result">{time}s · {count} clics</div>
-      {running ? <button className="tapZone" onPointerDown={() => setCount((c) => c + 1)}>KLIK!</button> : <button className="primary" onClick={start}>{time === 0 ? 'REJOUER' : 'START'}</button>}
-      {!running && time === 0 && <div className="result">Score final : {count}</div>}
+      {phase === 'idle' && <><div className="result">30 secondes. Clique le plus vite possible.</div><button className="primary" onClick={start}>START</button></>}
+      {phase === 'running' && <>
+        <div className="result">{time}s · {count} clics</div>
+        <button className="tapZone" onPointerDown={() => setCount((c) => c + 1)}>KLIK!</button>
+      </>}
+      {phase === 'done' && <div className="tapResultScreen">
+        <div className="tapScoreLabel">SCORE FINAL</div>
+        <div className="tapScore">{count}</div>
+        <div className="tapScoreUnit">clics en 30 secondes</div>
+        <button className="primary replaySeparated" disabled={!replayReady} onClick={start}>{replayReady ? 'REJOUER' : '...'}</button>
+      </div>}
     </div>
   );
 }
 
-const COLORS = ['#ff1694', '#fff500', '#1d16f5', '#27d9a1', '#ff6b35', '#7a4cff'];
+const MEMORY_COLORS = ['#1d16f5', '#fff500', '#ff1694', '#ffffff'];
 
 function Memory() {
   const [sequence, setSequence] = useState<number[]>([]);
-  const [input, setInput] = useState<number[]>([]);
-  const [show, setShow] = useState(false);
-  const [round, setRound] = useState(0);
-  const [status, setStatus] = useState('Prêt ?');
+  const [answers, setAnswers] = useState<(number | null)[]>(Array(10).fill(null));
+  const [phase, setPhase] = useState<'idle' | 'memorize' | 'answer' | 'reveal' | 'done'>('idle');
+  const [selectedColor, setSelectedColor] = useState(0);
+  const [revealed, setRevealed] = useState(0);
+  const [score, setScore] = useState(0);
+  const revealTimers = useRef<number[]>([]);
 
-  const newRound = (nextRound = round + 1) => {
-    const len = Math.min(3 + nextRound, 9);
-    const seq = Array.from({ length: len }, () => Math.floor(Math.random() * COLORS.length));
-    setRound(nextRound); setSequence(seq); setInput([]); setShow(true); setStatus('Mémorise…');
-    window.setTimeout(() => { setShow(false); setStatus('À toi !'); }, 2200);
+  useEffect(() => () => revealTimers.current.forEach(clearTimeout), []);
+
+  const start = () => {
+    revealTimers.current.forEach(clearTimeout);
+    revealTimers.current = [];
+    const seq = Array.from({ length: 10 }, () => Math.floor(Math.random() * MEMORY_COLORS.length));
+    setSequence(seq);
+    setAnswers(Array(10).fill(null));
+    setSelectedColor(0);
+    setRevealed(0);
+    setScore(0);
+    setPhase('memorize');
+    window.setTimeout(() => setPhase('answer'), 5000);
   };
 
-  const choose = (color: number) => {
-    if (show || sequence.length === 0) return;
-    const next = [...input, color];
-    setInput(next);
-    const idx = next.length - 1;
-    if (sequence[idx] !== color) { setStatus(`Perdu — niveau ${round}`); setSequence([]); return; }
-    if (next.length === sequence.length) { setStatus('Parfait ! Niveau suivant…'); window.setTimeout(() => newRound(round + 1), 850); }
+  const setSlot = (index: number) => {
+    if (phase !== 'answer') return;
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[index] = selectedColor;
+      return next;
+    });
   };
 
-  const palette = useMemo(() => COLORS.map((color, i) => ({ color, i })), []);
+  const validate = () => {
+    if (phase !== 'answer' || answers.some((a) => a === null)) return;
+    setPhase('reveal');
+    setRevealed(0);
+    let points = 0;
+    sequence.forEach((color, index) => {
+      revealTimers.current.push(window.setTimeout(() => {
+        if (answers[index] === color) points += 1;
+        setScore(points);
+        setRevealed(index + 1);
+        if (index === 9) setPhase('done');
+      }, (index + 1) * 500));
+    });
+  };
+
+  const canValidate = answers.every((a) => a !== null);
 
   return (
-    <div className="gameStage">
+    <div className="gameStage memoryStage">
       <h2>🧠 Mémoire couleurs</h2>
-      <div className="result">Niveau {round || 1} · {status}</div>
-      {show && <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center',maxWidth:520}}>{sequence.map((c, i) => <div key={i} style={{width:54,height:54,borderRadius:18,background:COLORS[c]}} />)}</div>}
-      {!show && sequence.length > 0 && <div className="memoryGrid">{palette.map(({color,i}) => <button key={i} className="memoryCell" style={{background:color}} onClick={() => choose(i)} />)}</div>}
-      {sequence.length === 0 && <button className="primary" onClick={() => newRound(1)}>START</button>}
+      {phase === 'idle' && <><div className="result">Mémorise les 10 couleurs en 5 secondes.</div><button className="primary" onClick={start}>START</button></>}
+
+      {phase !== 'idle' && <>
+        <div className="memoryStatus">
+          {phase === 'memorize' && 'Mémorise… 5 secondes'}
+          {phase === 'answer' && 'Reproduis la combinaison'}
+          {phase === 'reveal' && `Vérification… ${revealed}/10`}
+          {phase === 'done' && `Résultat : ${score}/10`}
+        </div>
+
+        <div className="memoryBoard">
+          <div className="memoryRow targetRow">
+            {sequence.map((color, index) => {
+              const visible = phase === 'memorize' || (phase !== 'answer' && index < revealed);
+              return <div key={index} className={`memoryDot target ${visible ? 'visible' : 'covered'}`} style={visible ? { background: MEMORY_COLORS[color] } : undefined} />;
+            })}
+          </div>
+
+          <div className="memoryRow answerRow">
+            {answers.map((color, index) => {
+              const checked = phase === 'reveal' || phase === 'done';
+              const isCorrect = checked && index < revealed ? color === sequence[index] : false;
+              const isWrong = checked && index < revealed ? color !== sequence[index] : false;
+              return (
+                <button
+                  key={index}
+                  className={`memoryDot answer ${color === null ? 'empty' : ''} ${isCorrect ? 'correct' : ''} ${isWrong ? 'wrong' : ''}`}
+                  style={color === null ? undefined : { background: MEMORY_COLORS[color] }}
+                  onClick={() => setSlot(index)}
+                  disabled={phase !== 'answer'}
+                  aria-label={`Pastille ${index + 1}`}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {phase === 'answer' && <>
+          <div className="memoryPalette">
+            {MEMORY_COLORS.map((color, index) => <button key={color} className={`paletteColor ${selectedColor === index ? 'selected' : ''}`} style={{background: color}} onClick={() => setSelectedColor(index)} aria-label={`Couleur ${index + 1}`} />)}
+          </div>
+          <button className="primary" disabled={!canValidate} onClick={validate}>VALIDER</button>
+        </>}
+
+        {phase === 'done' && <button className="primary" onClick={start}>REJOUER</button>}
+      </>}
     </div>
   );
 }
