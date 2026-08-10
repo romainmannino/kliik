@@ -164,7 +164,7 @@
   64%,100%{opacity:0}
 }
 
-/* Final home polish: wording + tactile press cue, without touching game logic. */
+/* Final home wording, without touching game logic. */
 .homeHero p{
   font-size:0!important;
   white-space:nowrap!important;
@@ -176,53 +176,6 @@
   line-height:1.2;
   white-space:nowrap;
 }
-.card-tap .tapPulse{
-  position:relative!important;
-  overflow:visible!important;
-}
-/* Palm / base of the hand */
-.card-tap .tapPulse::before{
-  content:'';
-  position:absolute;
-  z-index:78;
-  width:43px;
-  height:54px;
-  right:-31px;
-  bottom:-35px;
-  border-radius:22px 22px 28px 28px;
-  background:linear-gradient(145deg,#ffd2ae 0%,#f0a36f 58%,#d87947 100%);
-  box-shadow:inset 5px 4px 8px rgba(255,255,255,.32),inset -5px -7px 9px rgba(143,66,29,.2),0 7px 9px rgba(0,0,0,.20);
-  transform:rotate(-24deg);
-  transform-origin:50% 80%;
-  pointer-events:none;
-  animation:kliikHandPalm .72s ease-in-out infinite alternate;
-}
-/* Index finger touching the button */
-.card-tap .tapPulse::after{
-  content:'';
-  position:absolute;
-  z-index:80;
-  width:22px;
-  height:68px;
-  right:-4px;
-  bottom:-10px;
-  border-radius:14px 14px 11px 11px;
-  background:radial-gradient(ellipse at 50% 9%,rgba(255,245,235,.72) 0 19%,transparent 21%),linear-gradient(90deg,#e99967 0%,#ffd5b3 35%,#ffc293 67%,#df8553 100%);
-  border:1px solid rgba(126,59,30,.18);
-  box-shadow:inset 3px 0 5px rgba(255,255,255,.35),inset -3px -3px 5px rgba(143,66,29,.14),0 5px 6px rgba(0,0,0,.18);
-  transform:rotate(-31deg);
-  transform-origin:50% 92%;
-  pointer-events:none;
-  animation:kliikFingerTap .72s ease-in-out infinite alternate;
-}
-@keyframes kliikFingerTap{
-  from{transform:translate(2px,5px) rotate(-31deg) scaleY(.96)}
-  to{transform:translate(-1px,-2px) rotate(-31deg) scaleY(1.02)}
-}
-@keyframes kliikHandPalm{
-  from{transform:translateY(4px) rotate(-24deg)}
-  to{transform:translateY(0) rotate(-24deg)}
-}
 
 @media(max-width:430px){
   .card-ten .miniTimer{min-width:120px!important;font-size:30px!important;padding:9px 11px!important}
@@ -230,6 +183,4 @@
   .card-f1 .miniLights i{width:21px!important;height:21px!important;flex-basis:21px!important;border-width:4px!important}
   .card-f1 .miniLights::before,.card-f1 .miniLights::after{width:48px!important}
   .homeHero p::after{font-size:clamp(12px,3.55vw,16px)!important;letter-spacing:-.2px!important}
-  .card-tap .tapPulse::before{width:38px;height:48px;right:-28px;bottom:-31px}
-  .card-tap .tapPulse::after{width:19px;height:60px;right:-2px;bottom:-8px}
 }
