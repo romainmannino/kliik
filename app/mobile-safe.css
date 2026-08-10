@@ -1,0 +1,68 @@
+/* FINAL MOBILE / PWA SAFETY OVERRIDES — loaded last */
+
+/* Home: keep everything below the iPhone status bar in standalone mode */
+.appShell{
+  padding-top:calc(env(safe-area-inset-top, 0px) + 14px)!important;
+  padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 38px)!important;
+}
+
+/* Use the uploaded transparent KLIIK mark only; hide the old text logo entirely. */
+.homeHeader .logo{
+  display:block!important;
+  width:190px!important;
+  height:72px!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  font-size:0!important;
+  line-height:0!important;
+  color:transparent!important;
+  text-indent:-9999px!important;
+  background-image:url('/logo.png')!important;
+  background-repeat:no-repeat!important;
+  background-position:left center!important;
+  /* logo.png has a large transparent square canvas, so zoom into the mark */
+  background-size:145% auto!important;
+}
+.homeHeader .logo span{display:none!important}
+
+/* All game / lobby back buttons must stay below the iPhone dynamic island / status bar. */
+.gamePage,
+.fullPanel{
+  padding-top:calc(env(safe-area-inset-top, 0px) + 18px)!important;
+  padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 18px)!important;
+}
+.gamePage .backBtn,
+.fullPanel .backBtn,
+.gamePage .gameBack{
+  top:calc(env(safe-area-inset-top, 0px) + 16px)!important;
+  left:18px!important;
+  z-index:999!important;
+}
+
+/* Give game content enough headroom so the back button never overlaps the title. */
+.gamePage .gameCore{
+  padding-top:calc(env(safe-area-inset-top, 0px) + 76px)!important;
+}
+
+/* In installed PWA mode, protect the whole viewport from the top and bottom safe areas. */
+@media (display-mode: standalone){
+  html,body{min-height:100dvh!important}
+  .appShell{padding-top:calc(env(safe-area-inset-top, 0px) + 12px)!important}
+  .gamePage .backBtn,
+  .fullPanel .backBtn,
+  .gamePage .gameBack{top:calc(env(safe-area-inset-top, 0px) + 12px)!important}
+}
+
+@media(max-width:430px){
+  .homeHeader .logo{
+    width:178px!important;
+    height:66px!important;
+    background-size:150% auto!important;
+  }
+}
+
+@media(max-height:720px){
+  .homeHeader .logo{height:54px!important;width:154px!important}
+  .gamePage .gameCore{padding-top:calc(env(safe-area-inset-top, 0px) + 68px)!important}
+}
