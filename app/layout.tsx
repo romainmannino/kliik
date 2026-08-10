@@ -3,6 +3,7 @@ import "./globals.css";
 import "./multiplayer.css";
 import "./upgrade.css";
 import "./stable.css";
+import "./home-hotfix.css";
 import PresenceGuard from "./PresenceGuard";
 
 export const metadata: Metadata = {
