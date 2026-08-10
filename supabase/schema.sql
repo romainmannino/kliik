@@ -18,8 +18,11 @@ create table if not exists public.players (
   room_id uuid not null references public.rooms(id) on delete cascade,
   nickname text not null,
   is_host boolean not null default false,
+  left_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.players add column if not exists left_at timestamptz;
 
 create table if not exists public.scores (
   id uuid primary key default gen_random_uuid(),
