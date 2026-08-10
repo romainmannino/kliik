@@ -1,6 +1,6 @@
 /* Final brand overrides loaded last. Keep this file deliberately strict. */
 
-/* Real KLIIK logo: crop the square asset so the yellow mark is large, not a tiny square. */
+/* Real KLIIK logo. */
 .logo{
   position:relative!important;
   display:block!important;
@@ -23,19 +23,45 @@
 .logo span{display:none!important}
 .logo::before,.logo::after{content:none!important;display:none!important}
 
-/* F1 card: cockpit photo is the ONLY background. */
+/* Slightly smaller home headline so the first screen breathes more. */
+.homeHero h1{
+  font-size:clamp(38px,6.9vh,62px)!important;
+  line-height:.88!important;
+  letter-spacing:-3px!important;
+}
+
+/* F1 card: cockpit image is a dedicated layer, impossible for legacy road CSS to replace. */
 .card-f1{
   position:relative!important;
   isolation:isolate!important;
   overflow:hidden!important;
-  background:
-    linear-gradient(180deg,rgba(0,0,0,.04) 0%,rgba(0,0,0,.08) 48%,rgba(0,0,0,.78) 100%),
-    url('/cockpit.PNG') center 46%/cover no-repeat!important;
+  background:#17181d!important;
   color:#fff!important;
 }
-.card-f1::before,.card-f1::after{content:none!important;display:none!important}
+.card-f1::before{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  background-image:url('/cockpit.PNG')!important;
+  background-repeat:no-repeat!important;
+  background-position:center 48%!important;
+  background-size:cover!important;
+  opacity:1!important;
+  pointer-events:none!important;
+}
+.card-f1::after{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
+  background:linear-gradient(180deg,rgba(0,0,0,.02) 0%,rgba(0,0,0,.08) 48%,rgba(0,0,0,.78) 100%)!important;
+  pointer-events:none!important;
+}
 
-/* Hard reset the old synthetic road/cockpit scene so it can never cover the photo. */
+/* Remove every synthetic road/cockpit layer from older CSS. */
 .card-f1 .cardVisual.f1CardSimple{
   all:unset!important;
   position:relative!important;
@@ -61,31 +87,31 @@
 }
 .card-f1 .cardCopy strong,.card-f1 .cardCopy span{color:#fff!important}
 
-/* Five round F1 start lamps, same language as the actual game. */
+/* Compact F1 start lights: smaller and closer to the real game proportions. */
 .card-f1 .miniLights{
   all:unset!important;
   position:absolute!important;
   z-index:20!important;
-  top:10%!important;
+  top:9%!important;
   left:50%!important;
   transform:translateX(-50%)!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  gap:7px!important;
-  padding:9px 12px!important;
+  gap:5px!important;
+  padding:6px 8px!important;
   background:#0d0e12!important;
-  border:3px solid #282a31!important;
-  border-radius:14px!important;
-  box-shadow:0 7px 0 #050608,0 14px 26px rgba(0,0,0,.58)!important;
+  border:2px solid #282a31!important;
+  border-radius:10px!important;
+  box-shadow:0 4px 0 #050608,0 9px 18px rgba(0,0,0,.5)!important;
 }
 .card-f1 .miniLights::before,.card-f1 .miniLights::after{
   content:''!important;
   display:block!important;
   position:absolute!important;
   top:50%!important;
-  width:44px!important;
-  height:4px!important;
+  width:28px!important;
+  height:3px!important;
   transform:translateY(-50%)!important;
   background:linear-gradient(#a4a6ad,#41434a)!important;
   z-index:-1!important;
@@ -96,21 +122,21 @@
   all:unset!important;
   position:relative!important;
   display:block!important;
-  width:30px!important;
-  height:30px!important;
-  flex:0 0 30px!important;
+  width:20px!important;
+  height:20px!important;
+  flex:0 0 20px!important;
   border-radius:50%!important;
-  background:#08090c!important;
-  box-shadow:inset 0 0 0 6px #292b32,inset 0 0 0 8px #111218!important;
+  background:#07080b!important;
+  box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #111218!important;
   overflow:hidden!important;
 }
 .card-f1 .miniLights i::before{
   content:''!important;
   position:absolute!important;
-  inset:7px!important;
+  inset:5px!important;
   border-radius:50%!important;
   background:#ff2038!important;
-  box-shadow:0 0 16px #ff2038,0 0 5px #fff3!important;
+  box-shadow:0 0 11px #ff2038!important;
   opacity:0;
   animation:f1HomeLamp 5.6s linear infinite!important;
 }
@@ -121,7 +147,6 @@
 .card-f1 .miniLights i:nth-child(4)::before{animation-delay:1.65s!important}
 .card-f1 .miniLights i:nth-child(5)::before{animation-delay:2.20s!important}
 
-/* Each lamp stays red once lit; all five then go dark together, like an F1 start. */
 @keyframes f1HomeLamp{
   0%,8%{opacity:0}
   10%,66%{opacity:1}
@@ -130,8 +155,9 @@
 
 @media(max-width:430px){
   .logo{width:156px!important;height:78px!important;background-size:170% auto!important}
-  .card-f1 .miniLights{top:9%!important;gap:5px!important;padding:7px 9px!important}
-  .card-f1 .miniLights i{width:25px!important;height:25px!important;flex-basis:25px!important;box-shadow:inset 0 0 0 5px #292b32,inset 0 0 0 7px #111218!important}
-  .card-f1 .miniLights i::before{inset:6px!important}
-  .card-f1 .miniLights::before,.card-f1 .miniLights::after{width:30px!important}
+  .homeHero h1{font-size:44px!important;line-height:.88!important;letter-spacing:-2.5px!important}
+  .card-f1 .miniLights{top:8%!important;gap:4px!important;padding:5px 7px!important}
+  .card-f1 .miniLights i{width:17px!important;height:17px!important;flex-basis:17px!important;box-shadow:inset 0 0 0 3px #292b32,inset 0 0 0 5px #111218!important}
+  .card-f1 .miniLights i::before{inset:4px!important}
+  .card-f1 .miniLights::before,.card-f1 .miniLights::after{width:22px!important}
 }
