@@ -1,11 +1,11 @@
 /* Final brand overrides loaded last. Keep this file deliberately strict. */
 
-/* Real KLIIK logo. */
+/* REAL KLIIK LOGO */
 .logo{
   position:relative!important;
   display:block!important;
-  width:180px!important;
-  height:88px!important;
+  width:156px!important;
+  height:68px!important;
   min-width:0!important;
   min-height:0!important;
   margin:0!important;
@@ -16,21 +16,20 @@
   background-color:transparent!important;
   background-image:url('/logo.png')!important;
   background-repeat:no-repeat!important;
-  background-position:center center!important;
-  background-size:165% auto!important;
-  overflow:hidden!important;
+  background-position:left center!important;
+  background-size:contain!important;
+  overflow:visible!important;
 }
 .logo span{display:none!important}
 .logo::before,.logo::after{content:none!important;display:none!important}
 
-/* Slightly smaller home headline so the first screen breathes more. */
 .homeHero h1{
   font-size:clamp(38px,6.9vh,62px)!important;
   line-height:.88!important;
   letter-spacing:-3px!important;
 }
 
-/* F1 card: cockpit image is a dedicated layer, impossible for legacy road CSS to replace. */
+/* F1 HOME CARD */
 .card-f1{
   position:relative!important;
   isolation:isolate!important;
@@ -57,11 +56,9 @@
   position:absolute!important;
   inset:0!important;
   z-index:1!important;
-  background:linear-gradient(180deg,rgba(0,0,0,.02) 0%,rgba(0,0,0,.08) 48%,rgba(0,0,0,.78) 100%)!important;
+  background:linear-gradient(180deg,rgba(0,0,0,.03) 0%,rgba(0,0,0,.10) 50%,rgba(0,0,0,.82) 100%)!important;
   pointer-events:none!important;
 }
-
-/* Remove every synthetic road/cockpit layer from older CSS. */
 .card-f1 .cardVisual.f1CardSimple{
   all:unset!important;
   position:relative!important;
@@ -72,27 +69,17 @@
   flex:0 0 64%!important;
   overflow:visible!important;
   background:transparent!important;
-  border:0!important;
-  box-shadow:none!important;
 }
-.card-f1 .cardVisual.f1CardSimple::before,
-.card-f1 .cardVisual.f1CardSimple::after{content:none!important;display:none!important}
-.card-f1 .miniCockpit,.card-f1 .miniRoad,.card-f1 .f1Track,.card-f1 .f1Road{display:none!important}
-
-.card-f1 .cardCopy{
-  position:relative!important;
-  z-index:10!important;
-  color:#fff!important;
-  text-shadow:0 2px 12px rgba(0,0,0,.95)!important;
-}
+.card-f1 .cardVisual.f1CardSimple::before,.card-f1 .cardVisual.f1CardSimple::after{content:none!important;display:none!important}
+.card-f1 .cardCopy{position:relative!important;z-index:10!important;color:#fff!important;text-shadow:0 2px 12px rgba(0,0,0,.95)!important}
 .card-f1 .cardCopy strong,.card-f1 .cardCopy span{color:#fff!important}
 
-/* Compact F1 start lights: smaller and closer to the real game proportions. */
+/* F1 HOME LIGHTS */
 .card-f1 .miniLights{
   all:unset!important;
   position:absolute!important;
   z-index:20!important;
-  top:9%!important;
+  top:8%!important;
   left:50%!important;
   transform:translateX(-50%)!important;
   display:flex!important;
@@ -106,58 +93,101 @@
   box-shadow:0 4px 0 #050608,0 9px 18px rgba(0,0,0,.5)!important;
 }
 .card-f1 .miniLights::before,.card-f1 .miniLights::after{
-  content:''!important;
-  display:block!important;
-  position:absolute!important;
-  top:50%!important;
-  width:28px!important;
-  height:3px!important;
-  transform:translateY(-50%)!important;
-  background:linear-gradient(#a4a6ad,#41434a)!important;
-  z-index:-1!important;
+  content:''!important;display:block!important;position:absolute!important;top:50%!important;width:28px!important;height:3px!important;transform:translateY(-50%)!important;background:linear-gradient(#a4a6ad,#41434a)!important;z-index:-1!important
 }
-.card-f1 .miniLights::before{right:100%!important}
-.card-f1 .miniLights::after{left:100%!important}
+.card-f1 .miniLights::before{right:100%!important}.card-f1 .miniLights::after{left:100%!important}
 .card-f1 .miniLights i{
-  all:unset!important;
-  position:relative!important;
-  display:block!important;
-  width:20px!important;
-  height:20px!important;
-  flex:0 0 20px!important;
-  border-radius:50%!important;
-  background:#07080b!important;
-  box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #111218!important;
-  overflow:hidden!important;
+  all:unset!important;position:relative!important;display:block!important;width:20px!important;height:20px!important;flex:0 0 20px!important;border-radius:50%!important;background:#07080b!important;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #111218!important;overflow:hidden!important
 }
 .card-f1 .miniLights i::before{
-  content:''!important;
-  position:absolute!important;
-  inset:5px!important;
-  border-radius:50%!important;
-  background:#ff2038!important;
-  box-shadow:0 0 11px #ff2038!important;
-  opacity:0;
-  animation:f1HomeLamp 5.6s linear infinite!important;
+  content:''!important;position:absolute!important;inset:5px!important;border-radius:50%!important;background:#ff2038!important;box-shadow:0 0 11px #ff2038!important;opacity:0;animation:f1HomeLamp 5.6s linear infinite!important
 }
 .card-f1 .miniLights i::after{content:none!important;display:none!important}
-.card-f1 .miniLights i:nth-child(1)::before{animation-delay:0s!important}
-.card-f1 .miniLights i:nth-child(2)::before{animation-delay:.55s!important}
-.card-f1 .miniLights i:nth-child(3)::before{animation-delay:1.10s!important}
-.card-f1 .miniLights i:nth-child(4)::before{animation-delay:1.65s!important}
-.card-f1 .miniLights i:nth-child(5)::before{animation-delay:2.20s!important}
+.card-f1 .miniLights i:nth-child(1)::before{animation-delay:0s!important}.card-f1 .miniLights i:nth-child(2)::before{animation-delay:.55s!important}.card-f1 .miniLights i:nth-child(3)::before{animation-delay:1.10s!important}.card-f1 .miniLights i:nth-child(4)::before{animation-delay:1.65s!important}.card-f1 .miniLights i:nth-child(5)::before{animation-delay:2.20s!important}
 
-@keyframes f1HomeLamp{
-  0%,8%{opacity:0}
-  10%,66%{opacity:1}
-  68%,100%{opacity:0}
+/* REAL F1 GAME USING THE COCKPIT PHOTO */
+.game-f1{
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  color:#fff!important;
+  background:#090a0e!important;
 }
+.game-f1::before{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  background:
+    linear-gradient(180deg,rgba(0,0,0,.12) 0%,rgba(0,0,0,.08) 42%,rgba(0,0,0,.54) 100%),
+    url('/cockpit.PNG') center 46%/cover no-repeat!important;
+  pointer-events:none!important;
+}
+.game-f1::after{
+  content:''!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
+  background:radial-gradient(circle at 50% 40%,transparent 0 30%,rgba(0,0,0,.05) 52%,rgba(0,0,0,.38) 100%)!important;
+  pointer-events:none!important;
+}
+.game-f1 .gameCore{
+  position:relative!important;
+  z-index:2!important;
+  justify-content:flex-start!important;
+  padding-top:clamp(94px,13vh,132px)!important;
+  color:#fff!important;
+  text-shadow:0 2px 12px rgba(0,0,0,.92)!important;
+}
+.game-f1 .f1Gantry{
+  width:min(88vw,650px)!important;
+  display:flex!important;
+  justify-content:center!important;
+  margin-bottom:clamp(16px,2.8vh,28px)!important;
+}
+.game-f1 .f1Lights{
+  position:relative!important;
+  z-index:4!important;
+  display:flex!important;
+  gap:9px!important;
+  padding:12px 15px!important;
+  background:linear-gradient(#1b1d23,#090a0d)!important;
+  border:3px solid #30323a!important;
+  border-radius:14px!important;
+  box-shadow:0 7px 0 #040507,0 14px 35px rgba(0,0,0,.6)!important;
+}
+.game-f1 .f1Lights::before,.game-f1 .f1Lights::after{
+  content:''!important;position:absolute!important;top:50%!important;width:58px!important;height:5px!important;transform:translateY(-50%)!important;background:linear-gradient(#b4b6bc,#494b52)!important;z-index:-1!important
+}
+.game-f1 .f1Lights::before{right:100%!important}.game-f1 .f1Lights::after{left:100%!important}
+.game-f1 .f1Lights i{
+  width:clamp(42px,9vw,62px)!important;
+  height:clamp(42px,9vw,62px)!important;
+  border-radius:50%!important;
+  background:#08090c!important;
+  box-shadow:inset 0 0 0 8px #292c34!important;
+}
+.game-f1 .f1Lights i.on{
+  background:#ff2037!important;
+  box-shadow:0 0 24px #ff2037,0 0 45px rgba(255,32,55,.65),inset 0 0 0 8px #8d0b19!important;
+}
+.game-f1 .f1Core h1,.game-f1 .f1Core p,.game-f1 .statusTxt,.game-f1 .bigResult{color:#fff!important}
+.game-f1 .f1Core h1{margin-top:2px!important}
+.game-f1 .f1Core p{max-width:520px!important;background:rgba(0,0,0,.28)!important;padding:8px 12px!important;border-radius:14px!important}
+.game-f1 .statusTxt{background:rgba(0,0,0,.52)!important;padding:9px 16px!important;border-radius:999px!important}
+.game-f1 .statusTxt.good{color:#a5ffbd!important}
+
+@keyframes f1HomeLamp{0%,8%{opacity:0}10%,66%{opacity:1}68%,100%{opacity:0}}
 
 @media(max-width:430px){
-  .logo{width:156px!important;height:78px!important;background-size:170% auto!important}
+  .logo{width:136px!important;height:58px!important}
   .homeHero h1{font-size:44px!important;line-height:.88!important;letter-spacing:-2.5px!important}
-  .card-f1 .miniLights{top:8%!important;gap:4px!important;padding:5px 7px!important}
+  .card-f1 .miniLights{top:7%!important;gap:4px!important;padding:5px 7px!important}
   .card-f1 .miniLights i{width:17px!important;height:17px!important;flex-basis:17px!important;box-shadow:inset 0 0 0 3px #292b32,inset 0 0 0 5px #111218!important}
   .card-f1 .miniLights i::before{inset:4px!important}
   .card-f1 .miniLights::before,.card-f1 .miniLights::after{width:22px!important}
+  .game-f1 .gameCore{padding-top:88px!important}
+  .game-f1 .f1Lights{gap:6px!important;padding:9px 10px!important}
+  .game-f1 .f1Lights::before,.game-f1 .f1Lights::after{width:28px!important}
 }
