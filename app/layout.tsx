@@ -6,6 +6,7 @@ import "./stable.css";
 import "./home-hotfix.css";
 import "./f1-brand.css";
 import "./f1-final.css";
+import "./mobile-safe.css";
 import PresenceGuard from "./PresenceGuard";
 import InstallPrompt from "./InstallPrompt";
 
