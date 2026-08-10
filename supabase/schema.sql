@@ -7,8 +7,11 @@ create table if not exists public.rooms (
   games jsonb not null default '[]'::jsonb,
   status text not null default 'lobby' check (status in ('lobby','playing','finished')),
   current_game int not null default 0,
+  max_attempts int not null default 3,
   created_at timestamptz not null default now()
 );
+
+alter table public.rooms add column if not exists max_attempts int not null default 3;
 
 create table if not exists public.players (
   id uuid primary key default gen_random_uuid(),
