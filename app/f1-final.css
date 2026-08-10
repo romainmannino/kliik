@@ -1,13 +1,24 @@
 /* FINAL F1 + LOGO OVERRIDES — loaded last on purpose */
 
+/* REAL KLIIK LOGO: hide the legacy text logo completely */
 .logo{
+  display:block!important;
   width:210px!important;
   height:92px!important;
+  min-width:0!important;
+  padding:0!important;
+  margin:0!important;
+  overflow:hidden!important;
+  font-size:0!important;
+  line-height:0!important;
+  color:transparent!important;
+  text-indent:-9999px!important;
   background:url('/logo.png') left center/contain no-repeat!important;
 }
+.logo span{display:none!important}
 
 @media(max-width:430px){
-  .logo{width:176px!important;height:76px!important}
+  .logo{width:154px!important;height:64px!important}
 }
 
 /* F1 HOME CARD */
@@ -27,10 +38,7 @@
     linear-gradient(180deg,rgba(0,0,0,.10) 0%,rgba(0,0,0,.12) 48%,rgba(0,0,0,.82) 100%),
     url('/cockpit.PNG') center 50%/cover no-repeat!important;
 }
-.card-f1::after{
-  content:none!important;
-  display:none!important;
-}
+.card-f1::after{content:none!important;display:none!important}
 .card-f1 .cardVisual,
 .card-f1 .f1CardSimple{
   position:relative!important;
@@ -42,10 +50,7 @@
 .card-f1 .cardVisual::before,
 .card-f1 .cardVisual::after,
 .card-f1 .f1CardSimple::before,
-.card-f1 .f1CardSimple::after{
-  content:none!important;
-  display:none!important;
-}
+.card-f1 .f1CardSimple::after{content:none!important;display:none!important}
 .card-f1 .cardCopy{
   position:relative!important;
   z-index:5!important;
@@ -54,7 +59,6 @@
 }
 .card-f1 .cardCopy strong,
 .card-f1 .cardCopy span{color:#fff!important}
-
 .card-f1 .miniLights{
   position:absolute!important;
   z-index:8!important;
@@ -84,32 +88,29 @@
 .card-f1 .miniLights::before{right:100%!important}
 .card-f1 .miniLights::after{left:100%!important}
 .card-f1 .miniLights i{
-  position:relative!important;
   display:block!important;
   width:20px!important;
   height:20px!important;
   flex:0 0 20px!important;
   border-radius:50%!important;
-  background:#06070a!important;
+  background:#07080b!important;
   box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116!important;
-  overflow:hidden!important;
-  animation:none!important;
+  animation-duration:5.2s!important;
+  animation-timing-function:linear!important;
+  animation-iteration-count:infinite!important;
 }
-.card-f1 .miniLights i::before{
-  content:''!important;
-  position:absolute!important;
-  inset:4px!important;
-  border-radius:50%!important;
-  background:#ff243b!important;
-  box-shadow:0 0 12px #ff243b,0 0 20px rgba(255,36,59,.75)!important;
-  opacity:0!important;
-  animation:f1LampFinal 5.4s linear infinite!important;
-}
-.card-f1 .miniLights i:nth-child(1)::before{animation-delay:0s!important}
-.card-f1 .miniLights i:nth-child(2)::before{animation-delay:.52s!important}
-.card-f1 .miniLights i:nth-child(3)::before{animation-delay:1.04s!important}
-.card-f1 .miniLights i:nth-child(4)::before{animation-delay:1.56s!important}
-.card-f1 .miniLights i:nth-child(5)::before{animation-delay:2.08s!important}
+.card-f1 .miniLights i:nth-child(1){animation-name:f1Home1!important}
+.card-f1 .miniLights i:nth-child(2){animation-name:f1Home2!important}
+.card-f1 .miniLights i:nth-child(3){animation-name:f1Home3!important}
+.card-f1 .miniLights i:nth-child(4){animation-name:f1Home4!important}
+.card-f1 .miniLights i:nth-child(5){animation-name:f1Home5!important}
+
+/* Each lamp turns on in sequence, stays on, then all switch off together */
+@keyframes f1Home1{0%,8%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}9%,70%{background:#ff2037;box-shadow:0 0 13px #ff2037,0 0 22px rgba(255,32,55,.75),inset 0 0 0 4px #7c0b17}71%,100%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}}
+@keyframes f1Home2{0%,18%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}19%,70%{background:#ff2037;box-shadow:0 0 13px #ff2037,0 0 22px rgba(255,32,55,.75),inset 0 0 0 4px #7c0b17}71%,100%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}}
+@keyframes f1Home3{0%,28%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}29%,70%{background:#ff2037;box-shadow:0 0 13px #ff2037,0 0 22px rgba(255,32,55,.75),inset 0 0 0 4px #7c0b17}71%,100%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}}
+@keyframes f1Home4{0%,38%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}39%,70%{background:#ff2037;box-shadow:0 0 13px #ff2037,0 0 22px rgba(255,32,55,.75),inset 0 0 0 4px #7c0b17}71%,100%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}}
+@keyframes f1Home5{0%,48%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}49%,70%{background:#ff2037;box-shadow:0 0 13px #ff2037,0 0 22px rgba(255,32,55,.75),inset 0 0 0 4px #7c0b17}71%,100%{background:#07080b;box-shadow:inset 0 0 0 4px #292b32,inset 0 0 0 6px #101116}}
 
 /* F1 GAME — force the cockpit photo over legacy asphalt CSS */
 .game-f1{
@@ -205,10 +206,4 @@
   background:rgba(0,0,0,.36)!important;
   padding:8px 12px!important;
   border-radius:14px!important;
-}
-
-@keyframes f1LampFinal{
-  0%,8%{opacity:0}
-  10%,62%{opacity:1}
-  65%,100%{opacity:0}
 }
