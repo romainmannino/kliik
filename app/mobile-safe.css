@@ -9,8 +9,8 @@
 /* Use the uploaded transparent KLIIK mark only; hide the old text logo entirely. */
 .homeHeader .logo{
   display:block!important;
-  width:245px!important;
-  height:82px!important;
+  width:275px!important;
+  height:92px!important;
   margin:0!important;
   padding:0!important;
   overflow:visible!important;
@@ -60,13 +60,13 @@
 
 @media(max-width:430px){
   .homeHeader .logo{
-    width:230px!important;
-    height:78px!important;
+    width:260px!important;
+    height:86px!important;
     background-size:contain!important;
   }
 }
 
 @media(max-height:720px){
-  .homeHeader .logo{height:60px!important;width:190px!important}
+  .homeHeader .logo{height:64px!important;width:205px!important}
   .gamePage .gameCore{padding-top:calc(env(safe-area-inset-top, 0px) + 68px)!important}
 }
