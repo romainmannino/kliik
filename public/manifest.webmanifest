@@ -1,0 +1,24 @@
+{
+  "name": "KLIIK — Mini jeux, maxi défis",
+  "short_name": "KLIIK",
+  "description": "Mini-jeux instantanés et défis entre amis.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1d16f5",
+  "theme_color": "#1d16f5",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "2000x2000",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "2000x2000",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
