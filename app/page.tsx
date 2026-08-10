@@ -1,423 +1,110 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { getSupabase } from '@/lib/supabase';
 
-type GameId = 'ten' | 'f1' | 'tap' | 'memory';
-type Tone = 'yellow' | 'white' | 'pink' | 'blue';
-
-type GameMeta = {
-  id: GameId;
-  title: string;
-  subtitle: string;
-  icon: string;
-  tone: Tone;
-};
-
-const GAMES: GameMeta[] = [
-  { id: 'ten', title: '10.000', subtitle: 'Arrête le chrono pile à 10 secondes.', icon: '⏱️', tone: 'yellow' },
-  { id: 'f1', title: 'F1 START', subtitle: 'Attends l’extinction des 5 feux. Puis frappe.', icon: '🏎️', tone: 'white' },
-  { id: 'tap', title: 'TAP 30', subtitle: 'Le plus de KLIK possible en 30 secondes.', icon: '👆', tone: 'pink' },
-  { id: 'memory', title: 'MÉMOIRE', subtitle: 'Mémorise 10 couleurs et replace-les.', icon: '🧠', tone: 'blue' },
+type GameId='ten'|'f1'|'tap'|'memory';
+type Mode='solo'|'duo'|'event';
+const GAMES:[GameId,string,string][]=[
+  ['ten','10.000','Arrête le chrono au plus près de 10.000 s'],
+  ['f1','F1 START','Attends l’extinction des 5 feux puis frappe'],
+  ['tap','TAP 30','Fais le plus de KLIK possible en 30 s'],
+  ['memory','MÉMOIRE','Mémorise 10 couleurs et replace-les'],
 ];
 
-function challengeUrl(game: GameId, result?: string) {
-  if (typeof window === 'undefined') return '';
-  const url = new URL(window.location.href);
-  url.search = '';
-  url.searchParams.set('game', game);
-  if (result) url.searchParams.set('score', result);
-  return url.toString();
+function share(text:string,url?:string){
+  const target=url||location.href;
+  if(navigator.share) navigator.share({title:'KLIIK',text,url:target}).catch(()=>{});
+  else navigator.clipboard.writeText(`${text}\n${target}`).then(()=>alert('Lien copié !'));
 }
 
-async function shareChallenge(game: GameId, text: string, result?: string) {
-  const url = challengeUrl(game, result);
-  const payload = { title: 'KLIIK', text, url };
-  try {
-    if (navigator.share) await navigator.share(payload);
-    else {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      window.alert('Défi copié ! Envoie-le à ton ami.');
+export default function Home(){
+  const [mode,setMode]=useState<Mode>('solo');
+  const [game,setGame]=useState<GameId|null>(null);
+  const [enabled,setEnabled]=useState<Record<GameId,boolean>>({ten:true,f1:true,tap:true,memory:true});
+  const [setup,setSetup]=useState(false);
+  const [selected,setSelected]=useState<GameId[]>(['ten','f1','tap','memory']);
+  const [room,setRoom]=useState<string|null>(null);
+  const [players,setPlayers]=useState<string[]>([]);
+  const [nick,setNick]=useState('');
+  const [host,setHost]=useState(false);
+  const [busy,setBusy]=useState(false);
+
+  useEffect(()=>{
+    const raw=localStorage.getItem('kliik-enabled-games'); if(raw) setEnabled(JSON.parse(raw));
+    const p=new URLSearchParams(location.search); const g=p.get('game') as GameId|null; if(g) setGame(g);
+    const r=p.get('room'); if(r){setRoom(r);setMode((p.get('mode') as Mode)||'event');}
+  },[]);
+
+  useEffect(()=>{
+    if(!room) return; const sb=getSupabase(); if(!sb) return;
+    let roomId:string|undefined;
+    sb.from('rooms').select('id').eq('code',room).single().then(({data})=>{roomId=data?.id; if(roomId) sb.from('players').select('nickname').eq('room_id',roomId).then(({data})=>setPlayers((data||[]).map(x=>x.nickname)));});
+    const channel=sb.channel(`room-${room}`).on('postgres_changes',{event:'*',schema:'public',table:'players'},()=>{
+      if(roomId) sb.from('players').select('nickname').eq('room_id',roomId).then(({data})=>setPlayers((data||[]).map(x=>x.nickname)));
+    }).subscribe();
+    return()=>{sb.removeChannel(channel)};
+  },[room]);
+
+  async function createRoom(){
+    setBusy(true); const code=Math.random().toString(36).slice(2,8).toUpperCase(); const sb=getSupabase();
+    if(sb){
+      const {data,error}=await sb.from('rooms').insert({code,mode,games:selected}).select('id').single();
+      if(!error&&data){ await sb.from('players').insert({room_id:data.id,nickname:'Organisateur',is_host:true}); }
     }
-  } catch {
-    // partage annulé
+    setRoom(code); setHost(true); setPlayers(['Organisateur']); setSetup(false); setBusy(false);
+    history.replaceState({},'',`/?room=${code}&mode=${mode}&host=1`);
   }
-}
 
-export default function Home() {
-  const [activeGame, setActiveGame] = useState<GameId | null>(null);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [enabled, setEnabled] = useState<Record<GameId, boolean>>({ ten: true, f1: true, tap: true, memory: true });
+  async function joinRoom(){
+    if(!room||!nick.trim()) return; const sb=getSupabase();
+    if(sb){ const {data:r}=await sb.from('rooms').select('id').eq('code',room).single(); if(r) await sb.from('players').insert({room_id:r.id,nickname:nick.trim(),is_host:false}); }
+    setPlayers(p=>p.includes(nick.trim())?p:[...p,nick.trim()]); setNick('');
+  }
 
-  useEffect(() => {
-    const game = new URLSearchParams(window.location.search).get('game') as GameId | null;
-    if (game && GAMES.some((g) => g.id === game)) setActiveGame(game);
-  }, []);
+  if(game) return <GameScreen id={game} onBack={()=>{setGame(null);history.replaceState({},'','/')}}/>;
+  if(room) return <Lobby room={room} mode={mode} host={host} players={players} nick={nick} setNick={setNick} join={joinRoom} selected={selected} onBack={()=>{setRoom(null);history.replaceState({},'','/')}}/>;
+  if(setup) return <Setup mode={mode} selected={selected} setSelected={setSelected} create={createRoom} busy={busy} onBack={()=>setSetup(false)}/>;
 
-  const visibleGames = GAMES.filter((g) => enabled[g.id]);
-
-  return (
-    <main className="shell">
-      <header className="topbar">
-        <button className="brand brandButton" onClick={() => { setAdminOpen(false); setActiveGame(null); }}>KL<span>II</span>K</button>
-        <button className="adminBtn" onClick={() => { setAdminOpen((v) => !v); setActiveGame(null); }}>
-          {adminOpen ? 'Fermer admin' : 'Admin'}
-        </button>
-      </header>
-
-      {adminOpen ? <Admin enabled={enabled} setEnabled={setEnabled} /> : activeGame ? (
-        <GameRouter id={activeGame} onBack={() => setActiveGame(null)} />
-      ) : (
-        <>
-          <section className="heroSimple">
-            <h1>MINI JEUX.<br />MAXI DÉFIS.</h1>
-            <p>Joue maintenant. Défie tes potes. Bientôt : crée ta room, choisis tes jeux et lance la compétition.</p>
-          </section>
-
-          <div className="sectionHead">
-            <div><h2>Choisis ton défi</h2><p>Une règle. Un écran. Un score.</p></div>
-          </div>
-
-          <section className="games">
-            {visibleGames.map((game) => (
-              <button key={game.id} className={`gameCard ${game.tone}`} onClick={() => setActiveGame(game.id)}>
-                <span className="gameIcon">{game.icon}</span>
-                <div>
-                  <h3>{game.title}</h3>
-                  <p>{game.subtitle}</p>
-                  <div className="go">JOUER →</div>
-                </div>
-              </button>
-            ))}
-          </section>
-        </>
-      )}
-    </main>
-  );
-}
-
-function Admin({ enabled, setEnabled }: { enabled: Record<GameId, boolean>; setEnabled: Dispatch<SetStateAction<Record<GameId, boolean>>> }) {
-  return (
-    <section className="adminPanel">
-      <h2>Admin KLIIK</h2>
-      <p className="subtle">Active ou désactive les jeux visibles.</p>
-      {GAMES.map((g) => (
-        <div className="adminRow" key={g.id}>
-          <div><strong>{g.icon} {g.title}</strong><div className="subtle">Solo · défi · room bientôt</div></div>
-          <button className={`switch ${enabled[g.id] ? 'on' : ''}`} onClick={() => setEnabled((prev) => ({ ...prev, [g.id]: !prev[g.id] }))}><span /></button>
-        </div>
-      ))}
+  return <main className="appShell">
+    <header className="homeHeader"><div className="logo">KL<span>II</span>K</div></header>
+    <section className="homeHero"><h1>MINI JEUX.<br/>MAXI DÉFIS.</h1><p>Choisis ton mode, joue tout de suite, défie tes potes.</p></section>
+    <nav className="modeTabs">
+      {(['solo','duo','event'] as Mode[]).map(m=><button key={m} className={mode===m?'active':''} onClick={()=>setMode(m)}>{m==='solo'?'SOLO':m==='duo'?'DUO':'MULTI'}</button>)}
+    </nav>
+    <section className="gameGrid">
+      {GAMES.filter(g=>enabled[g[0]]).map(([id,title,sub])=><button key={id} className={`liveCard card-${id}`} onClick={()=>mode==='solo'?setGame(id):(setSelected([id]),setSetup(true))}>
+        <div className="cardVisual">{id==='ten'?<div className="miniTimer">9.98</div>:id==='f1'?<div className="miniLights">{[1,2,3,4,5].map(i=><i key={i}/>)}</div>:id==='tap'?<div className="tapPulse"><b>KLIK!</b></div>:<div className="memoDots">{[0,1,2,3].map(i=><i key={i}/>)}</div>}</div>
+        <div className="cardCopy"><strong>{title}</strong><span>{sub}</span></div>
+      </button>)}
     </section>
-  );
+    {mode!=='solo'&&<button className="createRoomBtn" onClick={()=>setSetup(true)}>{mode==='duo'?'CRÉER UN DUEL':'CRÉER UNE ROOM'}</button>}
+    <ScoreTicker/>
+  </main>;
 }
 
-function GameRouter({ id, onBack }: { id: GameId; onBack: () => void }) {
-  const game = GAMES.find((g) => g.id === id)!;
-  return (
-    <section className={`playArea map map-${id}`}>
-      <div className="mapDecor" aria-hidden="true" />
-      <div className="playTop">
-        <button className="back" onClick={onBack}>← Jeux</button>
-        <div className="gameMiniTitle">{game.title}</div>
-      </div>
-      {id === 'ten' && <TenSeconds />}
-      {id === 'f1' && <F1Start />}
-      {id === 'tap' && <Tap30 />}
-      {id === 'memory' && <Memory />}
-    </section>
-  );
+function Setup({mode,selected,setSelected,create,busy,onBack}:{mode:Mode;selected:GameId[];setSelected:(v:GameId[])=>void;create:()=>void;busy:boolean;onBack:()=>void}){
+  return <main className="fullPanel"><button className="backBtn" onClick={onBack}>← Retour</button><h1>{mode==='duo'?'DUEL':'MULTIJOUEURS'}</h1><p>Choisis les jeux de la partie.</p><div className="setupGames">{GAMES.map(([id,title])=><button key={id} className={selected.includes(id)?'sel':''} onClick={()=>setSelected(selected.includes(id)?selected.filter(x=>x!==id):[...selected,id])}>{title}</button>)}</div><button className="bigAction" disabled={!selected.length||busy} onClick={create}>{busy?'CRÉATION…':mode==='duo'?'CRÉER LE DUEL':'CRÉER LA ROOM'}</button></main>
 }
 
-function GameIntro({ children }: { children: ReactNode }) {
-  return <p className="gameIntro">{children}</p>;
+function Lobby({room,mode,host,players,nick,setNick,join,selected,onBack}:{room:string;mode:Mode;host:boolean;players:string[];nick:string;setNick:(s:string)=>void;join:()=>void;selected:GameId[];onBack:()=>void}){
+  const url=typeof window==='undefined'?'':`${location.origin}/?room=${room}&mode=${mode}`;
+  return <main className="fullPanel lobby"><button className="backBtn" onClick={onBack}>← Accueil</button><div className="roomCode">ROOM <b>{room}</b></div><h1>{mode==='duo'?'DUEL':'MULTI'}</h1><p>{selected.length} jeu(x) sélectionné(s)</p>{host?<><div className="players"><strong>{players.length} joueur(s)</strong>{players.map((p,i)=><span key={i}>{p}</span>)}</div><button className="bigAction" onClick={()=>share(`Rejoins ma partie KLIIK : ${room}`,url)}>INVITER</button><button className="secondaryAction" disabled={mode==='duo'?players.length<2:players.length<2}>LANCER LA PARTIE</button></>:<><input className="nickInput" value={nick} onChange={e=>setNick(e.target.value)} placeholder="Ton prénom / pseudo"/><button className="bigAction" onClick={join}>REJOINDRE</button><div className="players">{players.map((p,i)=><span key={i}>{p}</span>)}</div></>}</main>
 }
 
-function ChallengeButton({ onClick }: { onClick: () => void }) {
-  return <button className="challengeBtn" onClick={onClick}><span>↗</span> DÉFIER UN AMI</button>;
+function ScoreTicker(){return <div className="ticker"><div className="tickerTrack"><span>🏆 10.000 — Léa 10.001</span><span>🏁 F1 — Tom 184 ms</span><span>⚡ TAP 30 — Noa 247</span><span>🧠 MÉMOIRE — Emma 10/10</span></div></div>}
+
+function GameScreen({id,onBack}:{id:GameId;onBack:()=>void}){
+  return <main className={`gamePage game-${id}`}><button className="backBtn gameBack" onClick={onBack}>← Jeux</button>{id==='ten'?<Ten/>:id==='f1'?<F1/>:id==='tap'?<Tap/>:<Memory/>}</main>
 }
 
-function EndActions({ replay, challenge, replayDisabled = false }: { replay: () => void; challenge: () => void; replayDisabled?: boolean }) {
-  return (
-    <div className="endActions">
-      <ChallengeButton onClick={challenge} />
-      <button className="primary" disabled={replayDisabled} onClick={replay}>{replayDisabled ? 'RÉSULTAT…' : 'REJOUER'}</button>
-    </div>
-  );
-}
+function EndActions({onReplay,onShare}:{onReplay:()=>void;onShare:()=>void}){return <div className="endActions"><button onClick={onShare}>DÉFIER UN AMI</button><button onClick={onReplay}>REJOUER</button></div>}
 
-function TenSeconds() {
-  const [running, setRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [result, setResult] = useState<number | null>(null);
-  const startRef = useRef(0);
-  const rafRef = useRef<number | null>(null);
+function Ten(){const[r,setR]=useState(false),[ms,setMs]=useState(0),[done,setDone]=useState(false);const st=useRef(0),raf=useRef(0);useEffect(()=>{if(!r)return;const f=()=>{setMs(performance.now()-st.current);raf.current=requestAnimationFrame(f)};raf.current=requestAnimationFrame(f);return()=>cancelAnimationFrame(raf.current)},[r]);const start=()=>{setDone(false);setMs(0);st.current=performance.now();setR(true)};const stop=()=>{setMs(performance.now()-st.current);setR(false);setDone(true)};return <section className="gameCore"><h1>10.000</h1><p>Arrête le chrono au plus près de 10.000 secondes.</p><div className="scoreDisplay">{(ms/1000).toFixed(3)}</div>{!done&&<button className="mainPlay" onClick={r?stop:start}>{r?'STOP':'START'}</button>}{done&&<><div className="resultPill">Écart {(Math.abs(ms-10000)/1000).toFixed(3)} s</div><EndActions onReplay={start} onShare={()=>share(`J’ai fait ${(ms/1000).toFixed(3)} s sur KLIIK. Tu peux me battre ?`,`${location.origin}/?game=ten&score=${(ms/1000).toFixed(3)}`)}/></>}</section>}
 
-  useEffect(() => {
-    if (!running) return;
-    const loop = () => {
-      setElapsed(performance.now() - startRef.current);
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [running]);
+function F1(){const[p,setP]=useState<'idle'|'lights'|'go'|'done'|'false'>('idle'),[n,setN]=useState(0),[reaction,setReaction]=useState(0);const go=useRef(0),timers=useRef<number[]>([]);const clear=()=>timers.current.forEach(clearTimeout);const start=()=>{clear();setP('lights');setN(0);for(let i=1;i<=5;i++)timers.current.push(window.setTimeout(()=>setN(i),i*950));timers.current.push(window.setTimeout(()=>{setN(0);setP('go');go.current=performance.now()},5*950+900+Math.random()*1800))};const hit=()=>{if(p==='lights'){clear();setP('false')}else if(p==='go'){setReaction(performance.now()-go.current);setP('done')}};return <section className="gameCore f1Core" onPointerDown={(p==='lights'||p==='go')?hit:undefined}><h1>F1 START</h1><p>Les 5 feux rouges s’allument lentement. Appuie dès qu’ils s’éteignent tous.</p><div className="f1Lights">{[1,2,3,4,5].map(i=><i key={i} className={n>=i?'on':''}/>)}</div>{p==='idle'&&<button className="mainPlay" onPointerDown={e=>e.stopPropagation()} onClick={start}>LANCER</button>}{p==='lights'&&<b className="statusTxt">ATTENDS…</b>}{p==='go'&&<b className="statusTxt good">MAINTENANT !</b>}{(p==='done'||p==='false')&&<>{p==='done'?<div className="bigResult">{reaction.toFixed(0)} ms</div>:<div className="bigResult bad">FAUX DÉPART</div>}<EndActions onReplay={start} onShare={()=>share(p==='done'?`J’ai fait ${reaction.toFixed(0)} ms au F1 Start KLIIK. Tu peux me battre ?`:'Je te défie au F1 Start KLIIK.',`${location.origin}/?game=f1`)}/></>}</section>}
 
-  const start = () => { setResult(null); setElapsed(0); startRef.current = performance.now(); setRunning(true); };
-  const stop = () => { const ms = performance.now() - startRef.current; setRunning(false); setElapsed(ms); setResult(ms); };
-  const diff = result === null ? null : Math.abs(result - 10000);
+function Tap(){const[count,setCount]=useState(0),[time,setTime]=useState(30),[phase,setPhase]=useState<'idle'|'run'|'done'>('idle');useEffect(()=>{if(phase!=='run')return;const i=setInterval(()=>setTime(t=>{if(t<=1){clearInterval(i);setPhase('done');return 0}return t-1}),1000);return()=>clearInterval(i)},[phase]);const start=()=>{setCount(0);setTime(30);setPhase('run')};return <section className="gameCore"><h1>TAP 30</h1><p>Fais le plus de KLIK possible en 30 secondes.</p>{phase==='idle'&&<button className="mainPlay" onClick={start}>START</button>}{phase==='run'&&<><div className="tapHud2">{time}s · {count} KLIK</div><button className="tapBig" onPointerDown={()=>setCount(c=>c+1)}>KLIK!</button></>}{phase==='done'&&<><div className="bigResult">{count} KLIK</div><EndActions onReplay={start} onShare={()=>share(`J’ai fait ${count} KLIK en 30 secondes. Tu peux me battre ?`,`${location.origin}/?game=tap&score=${count}`)}/></>}</section>}
 
-  return (
-    <div className="gameStage tenStage">
-      <h2>10.000</h2>
-      <GameIntro>Lance le chrono puis arrête-le au plus près de <strong>10.000 secondes</strong>.</GameIntro>
-      <div className="timerMachine"><div className="bigTime">{(elapsed / 1000).toFixed(3)}</div></div>
-      {result === null && (!running ? <button className="primary" onClick={start}>START</button> : <button className="primary stopBtn" onClick={stop}>STOP</button>)}
-      {diff !== null && <>
-        <div className="result resultCard">Écart : {(diff / 1000).toFixed(3)} s {diff <= 20 ? '🔥' : diff <= 100 ? '👏' : ''}</div>
-        <EndActions replay={start} challenge={() => shareChallenge('ten', `J’ai fait ${(result! / 1000).toFixed(3)} s sur KLIIK. Tu peux me battre ?`, (result! / 1000).toFixed(3))} />
-      </>}
-    </div>
-  );
-}
-
-function F1Start() {
-  const [phase, setPhase] = useState<'idle'|'lights'|'go'|'done'|'false'>('idle');
-  const [count, setCount] = useState(0);
-  const [reaction, setReaction] = useState<number | null>(null);
-  const goAt = useRef(0);
-  const timers = useRef<number[]>([]);
-
-  const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
-  useEffect(() => clearTimers, []);
-
-  const start = () => {
-    clearTimers(); setReaction(null); setCount(0); setPhase('lights');
-    const step = 950;
-    for (let i = 1; i <= 5; i++) timers.current.push(window.setTimeout(() => setCount(i), i * step));
-    const offDelay = 5 * step + 900 + Math.random() * 2200;
-    timers.current.push(window.setTimeout(() => { setCount(0); setPhase('go'); goAt.current = performance.now(); }, offDelay));
-  };
-
-  const hit = () => {
-    if (phase === 'lights') { clearTimers(); setPhase('false'); return; }
-    if (phase === 'go') { setReaction(performance.now() - goAt.current); setPhase('done'); }
-  };
-
-  const finished = phase === 'done' || phase === 'false';
-
-  return (
-    <div className="gameStage f1Stage" onPointerDown={phase === 'lights' || phase === 'go' ? hit : undefined}>
-      <h2>F1 START</h2>
-      <GameIntro>Les 5 feux rouges s’allument <strong>un par un</strong>. Appuie dès qu’ils s’éteignent tous. Trop tôt = faux départ.</GameIntro>
-      <div className="startingGantry">
-        <div className="lights">{[1,2,3,4,5].map((n) => <div key={n} className={`light ${count >= n ? 'on' : ''}`} />)}</div>
-      </div>
-      <div className="trackLine"><span>🏎️</span></div>
-      {phase === 'idle' && <button className="primary" onPointerDown={(e) => e.stopPropagation()} onClick={start}>LANCER</button>}
-      {phase === 'lights' && <div className="result f1Message">ATTENDS…</div>}
-      {phase === 'go' && <div className="result goMessage">MAINTENANT !</div>}
-      {phase === 'done' && <div className="reactionScore">{reaction?.toFixed(0)} <small>ms</small></div>}
-      {phase === 'false' && <div className="falseStart">FAUX<br />DÉPART</div>}
-      {finished && <EndActions replay={start} challenge={() => shareChallenge('f1', phase === 'false' ? 'J’ai fait un faux départ au F1 Start de KLIIK 😅 Tu fais mieux ?' : `Mon temps de réaction : ${reaction!.toFixed(0)} ms sur KLIIK. Tu fais mieux ?`, reaction === null ? 'false-start' : reaction.toFixed(0))} />}
-    </div>
-  );
-}
-
-function Tap30() {
-  const [count, setCount] = useState(0);
-  const [time, setTime] = useState(30);
-  const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle');
-  const [replayReady, setReplayReady] = useState(false);
-
-  useEffect(() => {
-    if (phase !== 'running') return;
-    const id = window.setInterval(() => setTime((t) => {
-      if (t <= 1) {
-        clearInterval(id);
-        setPhase('done');
-        setReplayReady(false);
-        window.setTimeout(() => setReplayReady(true), 1200);
-        return 0;
-      }
-      return t - 1;
-    }), 1000);
-    return () => clearInterval(id);
-  }, [phase]);
-
-  const start = () => { setCount(0); setTime(30); setReplayReady(false); setPhase('running'); };
-
-  return (
-    <div className="gameStage tapStage">
-      <h2>TAP 30</h2>
-      <GameIntro>Tu as <strong>30 secondes</strong> pour faire le plus de KLIK possible.</GameIntro>
-      {phase === 'idle' && <>
-        <div className="countdownDisc"><strong>30</strong><span>SECONDES</span></div>
-        <button className="primary" onClick={start}>START</button>
-      </>}
-      {phase === 'running' && <>
-        <div className="tapHud"><strong>{time}</strong><span>sec</span><b>{count} KLIK</b></div>
-        <button className="tapZone" onPointerDown={() => setCount((c) => c + 1)}>KLIK!</button>
-      </>}
-      {phase === 'done' && <div className="tapResultScreen">
-        <div className="tapScoreLabel">TON SCORE</div>
-        <div className="tapScore">{count}</div>
-        <div className="tapScoreUnit">KLIK en 30 secondes</div>
-        <EndActions replay={start} replayDisabled={!replayReady} challenge={() => shareChallenge('tap', `J’ai fait ${count} KLIK en 30 secondes. Tu peux me battre ?`, String(count))} />
-      </div>}
-    </div>
-  );
-}
-
-const MEMORY_COLORS = ['#1d16f5', '#fff500', '#ff1694', '#ffffff'];
-
-function Memory() {
-  const [sequence, setSequence] = useState<number[]>([]);
-  const [answers, setAnswers] = useState<(number | null)[]>(Array(10).fill(null));
-  const [phase, setPhase] = useState<'idle' | 'memorize' | 'answer' | 'reveal' | 'done'>('idle');
-  const [activeSlot, setActiveSlot] = useState<number | null>(null);
-  const [revealed, setRevealed] = useState(0);
-  const [score, setScore] = useState(0);
-  const [firstError, setFirstError] = useState<number | null>(null);
-  const [seconds, setSeconds] = useState(5);
-  const revealTimers = useRef<number[]>([]);
-  const memorizeTimer = useRef<number | null>(null);
-  const countdownTimer = useRef<number | null>(null);
-
-  const clearMemoryTimers = () => {
-    revealTimers.current.forEach(clearTimeout);
-    revealTimers.current = [];
-    if (memorizeTimer.current) clearTimeout(memorizeTimer.current);
-    if (countdownTimer.current) clearInterval(countdownTimer.current);
-  };
-
-  useEffect(() => clearMemoryTimers, []);
-
-  const start = () => {
-    clearMemoryTimers();
-    const seq = Array.from({ length: 10 }, () => Math.floor(Math.random() * MEMORY_COLORS.length));
-    setSequence(seq);
-    setAnswers(Array(10).fill(null));
-    setActiveSlot(null);
-    setRevealed(0);
-    setScore(0);
-    setFirstError(null);
-    setSeconds(5);
-    setPhase('memorize');
-
-    countdownTimer.current = window.setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
-    memorizeTimer.current = window.setTimeout(() => {
-      if (countdownTimer.current) clearInterval(countdownTimer.current);
-      setSeconds(0);
-      setPhase('answer');
-    }, 5000);
-  };
-
-  const chooseColor = (color: number) => {
-    if (phase !== 'answer' || activeSlot === null) return;
-    setAnswers((prev) => {
-      const next = [...prev];
-      next[activeSlot] = color;
-      return next;
-    });
-    setActiveSlot((slot) => slot === null ? null : slot < 9 ? slot + 1 : null);
-  };
-
-  const validate = () => {
-    if (phase !== 'answer' || answers.some((a) => a === null)) return;
-    setPhase('reveal');
-    setActiveSlot(null);
-    setRevealed(0);
-    setScore(0);
-    setFirstError(null);
-
-    let points = 0;
-    let error: number | null = null;
-    sequence.forEach((color, index) => {
-      revealTimers.current.push(window.setTimeout(() => {
-        const ok = answers[index] === color;
-        if (ok) points += 1;
-        else if (error === null) { error = index; setFirstError(index); }
-        setScore(points);
-        setRevealed(index + 1);
-        if (index === 9) setPhase('done');
-      }, (index + 1) * 1250));
-    });
-  };
-
-  const canValidate = answers.every((a) => a !== null);
-  const currentIndex = Math.max(0, revealed - 1);
-  const currentCorrect = revealed > 0 ? answers[currentIndex] === sequence[currentIndex] : null;
-
-  return (
-    <div className="gameStage memoryStage">
-      <h2>MÉMOIRE</h2>
-      <GameIntro>Mémorise les 10 couleurs pendant <strong>5 secondes</strong>, puis reproduis-les. La vérification se fait <strong>de gauche à droite →</strong>. Une seule erreur = partie perdue, mais toutes les bonnes réponses comptent pour départager les égalités.</GameIntro>
-
-      {phase === 'idle' && <button className="primary" onClick={start}>START</button>}
-
-      {phase !== 'idle' && <>
-        <div className="memoryStatus">
-          {phase === 'memorize' && `MÉMORISE… ${seconds}s`}
-          {phase === 'answer' && 'CLIQUE UNE BILLE GRISE, PUIS CHOISIS SA COULEUR'}
-          {phase === 'reveal' && `DÉCOUVERTE → ${revealed}/10`}
-          {phase === 'done' && (firstError === null ? 'PARFAIT ! 10/10' : `PARTIE PERDUE · ${score}/10 BONNES`)}
-        </div>
-
-        <div className="memoryBoard">
-          <div className="memoryDirection"><span>DÉPART</span><b>→</b><span>FIN</span></div>
-          <div className="memoryRow targetRow">
-            {sequence.map((color, index) => {
-              const visible = phase === 'memorize' || ((phase === 'reveal' || phase === 'done') && index < revealed);
-              return (
-                <div key={index} className="memoryTargetWrap">
-                  <div className="memoryDot target" style={{ background: MEMORY_COLORS[color] }} />
-                  {!visible && <div className="memoryCap"><span>{index + 1}</span></div>}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="memoryRow answerRow">
-            {answers.map((color, index) => {
-              const checked = (phase === 'reveal' || phase === 'done') && index < revealed;
-              const ok = checked && color === sequence[index];
-              const wrong = checked && color !== sequence[index];
-              return (
-                <button
-                  key={index}
-                  className={`memoryDot answer ${color === null ? 'empty' : ''} ${activeSlot === index ? 'active' : ''} ${ok ? 'correct' : ''} ${wrong ? 'wrong' : ''}`}
-                  style={color === null ? undefined : { background: MEMORY_COLORS[color] }}
-                  onClick={() => phase === 'answer' && setActiveSlot(index)}
-                  disabled={phase !== 'answer'}
-                  aria-label={`Bille ${index + 1}`}
-                >{checked && <span className="answerMark">{ok ? '✓' : '✕'}</span>}</button>
-              );
-            })}
-          </div>
-        </div>
-
-        {phase === 'answer' && activeSlot !== null && <div className="memoryPicker">
-          <div className="pickerLabel">Bille {activeSlot + 1} : choisis la couleur</div>
-          <div className="memoryPalette">
-            {MEMORY_COLORS.map((color, index) => <button key={color} className="paletteColor" style={{background: color}} onClick={() => chooseColor(index)} aria-label={`Couleur ${index + 1}`} />)}
-          </div>
-        </div>}
-
-        {phase === 'answer' && <button className="primary" disabled={!canValidate} onClick={validate}>VALIDER</button>}
-
-        {phase === 'reveal' && revealed > 0 && <div className={`memoryVerdict ${currentCorrect ? 'good' : 'bad'}`}>
-          <strong>{currentCorrect ? '✓ BONNE RÉPONSE' : '✕ MAUVAISE RÉPONSE'}</strong>
-          <span>Bille {revealed} · score provisoire {score}/10</span>
-        </div>}
-
-        {phase === 'done' && <>
-          <div className={`memoryFinal ${firstError === null ? 'win' : 'lose'}`}>
-            <strong>{firstError === null ? 'VICTOIRE' : `PERDU À LA BILLE ${firstError + 1}`}</strong>
-            <span>{score}/10 bonnes réponses au total</span>
-          </div>
-          <EndActions replay={start} challenge={() => shareChallenge('memory', firstError === null ? 'J’ai fait un sans-faute 10/10 à Mémoire sur KLIIK. Tu peux faire pareil ?' : `J’ai trouvé ${score}/10 couleurs à Mémoire sur KLIIK. Tu peux me battre ?`, String(score))} />
-        </>}
-      </>}
-    </div>
-  );
-}
+const MC=['#1d16f5','#fff500','#ff1694','#fff'];
+function Memory(){const[seq,setSeq]=useState<number[]>([]),[ans,setAns]=useState<(number|null)[]>(Array(10).fill(null)),[phase,setPhase]=useState<'idle'|'memorize'|'answer'|'reveal'|'done'>('idle'),[active,setActive]=useState<number|null>(null),[revealed,setRevealed]=useState(0),[msg,setMsg]=useState(''),[score,setScore]=useState(0),[lost,setLost]=useState(false);const timers=useRef<number[]>([]);const start=()=>{timers.current.forEach(clearTimeout);setSeq(Array.from({length:10},()=>Math.floor(Math.random()*4)));setAns(Array(10).fill(null));setRevealed(0);setScore(0);setLost(false);setMsg('Mémorise de gauche à droite →');setPhase('memorize');setTimeout(()=>{setPhase('answer');setMsg('Clique chaque bille grise puis choisis sa couleur')},5000)};const validate=()=>{setPhase('reveal');let pts=0,bad=false;seq.forEach((c,i)=>timers.current.push(window.setTimeout(()=>{const ok=ans[i]===c;if(ok)pts++;else bad=true;setScore(pts);setLost(bad);setRevealed(i+1);setMsg(ok?'✓ BONNE RÉPONSE':'✕ MAUVAISE RÉPONSE — partie perdue');if(i===9)setPhase('done')},(i+1)*1500)))};return <section className="gameCore memoryCore"><h1>MÉMOIRE</h1><p>Mémorise les 10 couleurs de gauche à droite → puis reproduis-les.</p>{phase==='idle'&&<button className="mainPlay" onClick={start}>START</button>}{phase!=='idle'&&<><b className={`memoryMsg ${msg.startsWith('✕')?'badMsg':msg.startsWith('✓')?'goodMsg':''}`}>{msg}</b><div className="memRows"><div className="memRow">{seq.map((c,i)=><div key={i} className="memTarget" style={(phase==='memorize'||i<revealed)?{background:MC[c]}:undefined}><span className={(phase==='memorize'||i<revealed)?'cap open':'cap'}/></div>)}</div><div className="memRow">{ans.map((c,i)=><button key={i} onClick={()=>phase==='answer'&&setActive(i)} className={`memAns ${active===i?'active':''}`} style={c===null?undefined:{background:MC[c]}}/>)}</div></div>{phase==='answer'&&active!==null&&<div className="palette">{MC.map((c,i)=><button key={c} style={{background:c}} onClick={()=>{setAns(a=>{const n=[...a];n[active]=i;return n});setActive(null)}}/>)}</div>}{phase==='answer'&&<button className="mainPlay" disabled={ans.some(x=>x===null)} onClick={validate}>VALIDER</button>}{phase==='done'&&<><div className={`bigResult ${lost?'bad':''}`}>{lost?'PERDU':'PARFAIT'} · {score}/10</div><EndActions onReplay={start} onShare={()=>share(`J’ai fait ${score}/10 au jeu Mémoire KLIIK. Tu peux me battre ?`,`${location.origin}/?game=memory&score=${score}`)}/></>}</>}</section>}
