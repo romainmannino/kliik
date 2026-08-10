@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 
 type GameId = 'ten' | 'f1' | 'tap' | 'memory';
 type Tone = 'yellow' | 'white' | 'pink' | 'blue';
@@ -17,7 +17,7 @@ type GameMeta = {
 const GAMES: GameMeta[] = [
   { id: 'ten', title: '10.000', subtitle: 'Arrête le chrono pile à 10 secondes.', icon: '⏱️', tone: 'yellow' },
   { id: 'f1', title: 'F1 START', subtitle: 'Attends l’extinction des 5 feux. Puis frappe.', icon: '🏎️', tone: 'white' },
-  { id: 'tap', title: 'TAP 30', subtitle: 'Le plus de clics possible en 30 secondes.', icon: '👆', tone: 'pink' },
+  { id: 'tap', title: 'TAP 30', subtitle: 'Le plus de KLIK possible en 30 secondes.', icon: '👆', tone: 'pink' },
   { id: 'memory', title: 'MÉMOIRE', subtitle: 'Mémorise 10 couleurs et replace-les.', icon: '🧠', tone: 'blue' },
 ];
 
@@ -34,14 +34,13 @@ async function shareChallenge(game: GameId, text: string, result?: string) {
   const url = challengeUrl(game, result);
   const payload = { title: 'KLIIK', text, url };
   try {
-    if (navigator.share) {
-      await navigator.share(payload);
-    } else {
+    if (navigator.share) await navigator.share(payload);
+    else {
       await navigator.clipboard.writeText(`${text}\n${url}`);
       window.alert('Défi copié ! Envoie-le à ton ami.');
     }
   } catch {
-    // Partage annulé : aucune action nécessaire.
+    // partage annulé
   }
 }
 
@@ -51,8 +50,7 @@ export default function Home() {
   const [enabled, setEnabled] = useState<Record<GameId, boolean>>({ ten: true, f1: true, tap: true, memory: true });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const game = params.get('game') as GameId | null;
+    const game = new URLSearchParams(window.location.search).get('game') as GameId | null;
     if (game && GAMES.some((g) => g.id === game)) setActiveGame(game);
   }, []);
 
@@ -67,9 +65,7 @@ export default function Home() {
         </button>
       </header>
 
-      {adminOpen ? (
-        <Admin enabled={enabled} setEnabled={setEnabled} />
-      ) : activeGame ? (
+      {adminOpen ? <Admin enabled={enabled} setEnabled={setEnabled} /> : activeGame ? (
         <GameRouter id={activeGame} onBack={() => setActiveGame(null)} />
       ) : (
         <>
@@ -104,7 +100,7 @@ function Admin({ enabled, setEnabled }: { enabled: Record<GameId, boolean>; setE
   return (
     <section className="adminPanel">
       <h2>Admin KLIIK</h2>
-      <p className="subtle">Active ou désactive les jeux visibles. Les règles détaillées viendront ensuite ici.</p>
+      <p className="subtle">Active ou désactive les jeux visibles.</p>
       {GAMES.map((g) => (
         <div className="adminRow" key={g.id}>
           <div><strong>{g.icon} {g.title}</strong><div className="subtle">Solo · défi · room bientôt</div></div>
@@ -132,12 +128,21 @@ function GameRouter({ id, onBack }: { id: GameId; onBack: () => void }) {
   );
 }
 
-function GameIntro({ children }: { children: React.ReactNode }) {
+function GameIntro({ children }: { children: ReactNode }) {
   return <p className="gameIntro">{children}</p>;
 }
 
 function ChallengeButton({ onClick }: { onClick: () => void }) {
   return <button className="challengeBtn" onClick={onClick}><span>↗</span> DÉFIER UN AMI</button>;
+}
+
+function EndActions({ replay, challenge, replayDisabled = false }: { replay: () => void; challenge: () => void; replayDisabled?: boolean }) {
+  return (
+    <div className="endActions">
+      <ChallengeButton onClick={challenge} />
+      <button className="primary" disabled={replayDisabled} onClick={replay}>{replayDisabled ? 'RÉSULTAT…' : 'REJOUER'}</button>
+    </div>
+  );
 }
 
 function TenSeconds() {
@@ -162,13 +167,15 @@ function TenSeconds() {
   const diff = result === null ? null : Math.abs(result - 10000);
 
   return (
-    <div className="gameStage">
+    <div className="gameStage tenStage">
       <h2>10.000</h2>
-      <GameIntro>Lance le chrono et arrête-le au plus près de <strong>10.000 secondes</strong>.</GameIntro>
+      <GameIntro>Lance le chrono puis arrête-le au plus près de <strong>10.000 secondes</strong>.</GameIntro>
       <div className="timerMachine"><div className="bigTime">{(elapsed / 1000).toFixed(3)}</div></div>
-      {!running ? <button className="primary" onClick={start}>{result === null ? 'START' : 'REJOUER'}</button> : <button className="primary stopBtn" onClick={stop}>STOP</button>}
-      {diff !== null && <div className="result resultCard">Écart : {(diff / 1000).toFixed(3)} s {diff <= 20 ? '🔥' : diff <= 100 ? '👏' : ''}</div>}
-      <ChallengeButton onClick={() => shareChallenge('ten', result === null ? 'Je te défie sur le 10.000 de KLIIK. Tu peux faire mieux ?' : `J’ai fait ${(result / 1000).toFixed(3)} s sur KLIIK. Tu peux me battre ?`, result === null ? undefined : (result / 1000).toFixed(3))} />
+      {result === null && (!running ? <button className="primary" onClick={start}>START</button> : <button className="primary stopBtn" onClick={stop}>STOP</button>)}
+      {diff !== null && <>
+        <div className="result resultCard">Écart : {(diff / 1000).toFixed(3)} s {diff <= 20 ? '🔥' : diff <= 100 ? '👏' : ''}</div>
+        <EndActions replay={start} challenge={() => shareChallenge('ten', `J’ai fait ${(result! / 1000).toFixed(3)} s sur KLIIK. Tu peux me battre ?`, (result! / 1000).toFixed(3))} />
+      </>}
     </div>
   );
 }
@@ -185,8 +192,9 @@ function F1Start() {
 
   const start = () => {
     clearTimers(); setReaction(null); setCount(0); setPhase('lights');
-    for (let i = 1; i <= 5; i++) timers.current.push(window.setTimeout(() => setCount(i), i * 650));
-    const offDelay = 5 * 650 + 700 + Math.random() * 2200;
+    const step = 950;
+    for (let i = 1; i <= 5; i++) timers.current.push(window.setTimeout(() => setCount(i), i * step));
+    const offDelay = 5 * step + 900 + Math.random() * 2200;
     timers.current.push(window.setTimeout(() => { setCount(0); setPhase('go'); goAt.current = performance.now(); }, offDelay));
   };
 
@@ -195,20 +203,22 @@ function F1Start() {
     if (phase === 'go') { setReaction(performance.now() - goAt.current); setPhase('done'); }
   };
 
+  const finished = phase === 'done' || phase === 'false';
+
   return (
     <div className="gameStage f1Stage" onPointerDown={phase === 'lights' || phase === 'go' ? hit : undefined}>
       <h2>F1 START</h2>
-      <GameIntro>Les 5 feux s’allument. Appuie <strong>dès qu’ils s’éteignent</strong>. Trop tôt = faux départ.</GameIntro>
-      <div className="startingGantrY">
+      <GameIntro>Les 5 feux rouges s’allument <strong>un par un</strong>. Appuie dès qu’ils s’éteignent tous. Trop tôt = faux départ.</GameIntro>
+      <div className="startingGantry">
         <div className="lights">{[1,2,3,4,5].map((n) => <div key={n} className={`light ${count >= n ? 'on' : ''}`} />)}</div>
       </div>
       <div className="trackLine"><span>🏎️</span></div>
       {phase === 'idle' && <button className="primary" onPointerDown={(e) => e.stopPropagation()} onClick={start}>LANCER</button>}
       {phase === 'lights' && <div className="result f1Message">ATTENDS…</div>}
       {phase === 'go' && <div className="result goMessage">MAINTENANT !</div>}
-      {phase === 'done' && <><div className="reactionScore">{reaction?.toFixed(0)} <small>ms</small></div><button className="primary" onPointerDown={(e) => e.stopPropagation()} onClick={start}>REJOUER</button></>}
-      {phase === 'false' && <><div className="falseStart">FAUX<br />DÉPART</div><button className="primary" onPointerDown={(e) => e.stopPropagation()} onClick={start}>REJOUER</button></>}
-      <ChallengeButton onClick={() => shareChallenge('f1', reaction === null ? 'Je te défie au F1 Start de KLIIK. Qui a le meilleur réflexe ?' : `Mon temps de réaction : ${reaction.toFixed(0)} ms sur KLIIK. Tu fais mieux ?`, reaction === null ? undefined : reaction.toFixed(0))} />
+      {phase === 'done' && <div className="reactionScore">{reaction?.toFixed(0)} <small>ms</small></div>}
+      {phase === 'false' && <div className="falseStart">FAUX<br />DÉPART</div>}
+      {finished && <EndActions replay={start} challenge={() => shareChallenge('f1', phase === 'false' ? 'J’ai fait un faux départ au F1 Start de KLIIK 😅 Tu fais mieux ?' : `Mon temps de réaction : ${reaction!.toFixed(0)} ms sur KLIIK. Tu fais mieux ?`, reaction === null ? 'false-start' : reaction.toFixed(0))} />}
     </div>
   );
 }
@@ -252,10 +262,8 @@ function Tap30() {
         <div className="tapScoreLabel">TON SCORE</div>
         <div className="tapScore">{count}</div>
         <div className="tapScoreUnit">KLIK en 30 secondes</div>
-        <ChallengeButton onClick={() => shareChallenge('tap', `J’ai fait ${count} KLIK en 30 secondes. Tu peux me battre ?`, String(count))} />
-        <button className="primary replaySeparated" disabled={!replayReady} onClick={start}>{replayReady ? 'REJOUER' : 'RÉSULTAT…'}</button>
+        <EndActions replay={start} replayDisabled={!replayReady} challenge={() => shareChallenge('tap', `J’ai fait ${count} KLIK en 30 secondes. Tu peux me battre ?`, String(count))} />
       </div>}
-      {phase !== 'done' && <ChallengeButton onClick={() => shareChallenge('tap', 'Je te défie au TAP 30 de KLIIK. Combien de KLIK peux-tu faire ?')} />}
     </div>
   );
 }
@@ -269,6 +277,7 @@ function Memory() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [score, setScore] = useState(0);
+  const [firstError, setFirstError] = useState<number | null>(null);
   const [seconds, setSeconds] = useState(5);
   const revealTimers = useRef<number[]>([]);
   const memorizeTimer = useRef<number | null>(null);
@@ -291,13 +300,15 @@ function Memory() {
     setActiveSlot(null);
     setRevealed(0);
     setScore(0);
+    setFirstError(null);
     setSeconds(5);
     setPhase('memorize');
+
     countdownTimer.current = window.setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
     memorizeTimer.current = window.setTimeout(() => {
       if (countdownTimer.current) clearInterval(countdownTimer.current);
+      setSeconds(0);
       setPhase('answer');
-      setActiveSlot(0);
     }, 5000);
   };
 
@@ -308,101 +319,104 @@ function Memory() {
       next[activeSlot] = color;
       return next;
     });
-    const nextEmpty = answers.findIndex((answer, index) => index > activeSlot && answer === null);
-    setActiveSlot(nextEmpty >= 0 ? nextEmpty : null);
+    setActiveSlot((slot) => slot === null ? null : slot < 9 ? slot + 1 : null);
   };
 
   const validate = () => {
     if (phase !== 'answer' || answers.some((a) => a === null)) return;
-    setActiveSlot(null);
     setPhase('reveal');
+    setActiveSlot(null);
     setRevealed(0);
+    setScore(0);
+    setFirstError(null);
+
     let points = 0;
+    let error: number | null = null;
     sequence.forEach((color, index) => {
       revealTimers.current.push(window.setTimeout(() => {
-        if (answers[index] === color) points += 1;
+        const ok = answers[index] === color;
+        if (ok) points += 1;
+        else if (error === null) { error = index; setFirstError(index); }
         setScore(points);
         setRevealed(index + 1);
         if (index === 9) setPhase('done');
-      }, 600 + index * 650));
+      }, (index + 1) * 1250));
     });
   };
 
   const canValidate = answers.every((a) => a !== null);
+  const currentIndex = Math.max(0, revealed - 1);
+  const currentCorrect = revealed > 0 ? answers[currentIndex] === sequence[currentIndex] : null;
 
   return (
     <div className="gameStage memoryStage">
       <h2>MÉMOIRE</h2>
-      <GameIntro>Mémorise les <strong>10 couleurs pendant 5 secondes</strong>, puis reconstruis la ligne.</GameIntro>
+      <GameIntro>Mémorise les 10 couleurs pendant <strong>5 secondes</strong>, puis reproduis-les. La vérification se fait <strong>de gauche à droite →</strong>. Une seule erreur = partie perdue, mais toutes les bonnes réponses comptent pour départager les égalités.</GameIntro>
 
-      {phase === 'idle' && <>
-        <div className="memoryPreview">
-          {MEMORY_COLORS.map((color) => <i key={color} style={{background:color}} />)}
-        </div>
-        <button className="primary" onClick={start}>START</button>
-        <ChallengeButton onClick={() => shareChallenge('memory', 'Je te défie au jeu Mémoire de KLIIK. Combien de couleurs vas-tu retrouver ?')} />
-      </>}
+      {phase === 'idle' && <button className="primary" onClick={start}>START</button>}
 
       {phase !== 'idle' && <>
         <div className="memoryStatus">
-          {phase === 'memorize' && <>MÉMORISE · <strong>{seconds}s</strong></>}
-          {phase === 'answer' && <>RECONSTRUIS LA LIGNE</>}
-          {phase === 'reveal' && <>DÉCOUVERTE · {revealed}/10</>}
-          {phase === 'done' && <>TERMINÉ · <strong>{score}/10</strong></>}
+          {phase === 'memorize' && `MÉMORISE… ${seconds}s`}
+          {phase === 'answer' && 'CLIQUE UNE BILLE GRISE, PUIS CHOISIS SA COULEUR'}
+          {phase === 'reveal' && `DÉCOUVERTE → ${revealed}/10`}
+          {phase === 'done' && (firstError === null ? 'PARFAIT ! 10/10' : `PARTIE PERDUE · ${score}/10 BONNES`)}
         </div>
 
         <div className="memoryBoard">
-          <div className="memoryLabel">MODÈLE</div>
+          <div className="memoryDirection"><span>DÉPART</span><b>→</b><span>FIN</span></div>
           <div className="memoryRow targetRow">
             {sequence.map((color, index) => {
               const visible = phase === 'memorize' || ((phase === 'reveal' || phase === 'done') && index < revealed);
               return (
                 <div key={index} className="memoryTargetWrap">
                   <div className="memoryDot target" style={{ background: MEMORY_COLORS[color] }} />
-                  <div className={`memoryCap ${visible ? 'open' : ''} ${(phase === 'reveal' || phase === 'done') && index < revealed ? 'slideAway' : ''}`}>
-                    <span />
-                  </div>
+                  {!visible && <div className="memoryCap"><span>{index + 1}</span></div>}
                 </div>
               );
             })}
           </div>
 
-          <div className="memoryDivider" />
-          <div className="memoryLabel">TA RÉPONSE</div>
           <div className="memoryRow answerRow">
             {answers.map((color, index) => {
-              const checked = phase === 'reveal' || phase === 'done';
-              const isRevealed = checked && index < revealed;
-              const isCorrect = isRevealed ? color === sequence[index] : false;
-              const isWrong = isRevealed ? color !== sequence[index] : false;
+              const checked = (phase === 'reveal' || phase === 'done') && index < revealed;
+              const ok = checked && color === sequence[index];
+              const wrong = checked && color !== sequence[index];
               return (
                 <button
                   key={index}
-                  className={`memoryDot answer ${color === null ? 'empty' : ''} ${activeSlot === index ? 'activeSlot' : ''} ${isCorrect ? 'correct' : ''} ${isWrong ? 'wrong' : ''}`}
+                  className={`memoryDot answer ${color === null ? 'empty' : ''} ${activeSlot === index ? 'active' : ''} ${ok ? 'correct' : ''} ${wrong ? 'wrong' : ''}`}
                   style={color === null ? undefined : { background: MEMORY_COLORS[color] }}
                   onClick={() => phase === 'answer' && setActiveSlot(index)}
                   disabled={phase !== 'answer'}
-                  aria-label={`Pastille ${index + 1}`}
-                />
+                  aria-label={`Bille ${index + 1}`}
+                >{checked && <span className="answerMark">{ok ? '✓' : '✕'}</span>}</button>
               );
             })}
           </div>
-
-          {phase === 'answer' && activeSlot !== null && <div className="slotPicker">
-            <span>Pastille {activeSlot + 1}</span>
-            <div className="slotColors">
-              {MEMORY_COLORS.map((color, index) => (
-                <button key={color} className="paletteColor" style={{ background: color }} onClick={() => chooseColor(index)} aria-label={`Choisir couleur ${index + 1}`} />
-              ))}
-            </div>
-          </div>}
         </div>
 
-        {phase === 'answer' && <button className="primary validateMemory" disabled={!canValidate} onClick={validate}>VALIDER</button>}
+        {phase === 'answer' && activeSlot !== null && <div className="memoryPicker">
+          <div className="pickerLabel">Bille {activeSlot + 1} : choisis la couleur</div>
+          <div className="memoryPalette">
+            {MEMORY_COLORS.map((color, index) => <button key={color} className="paletteColor" style={{background: color}} onClick={() => chooseColor(index)} aria-label={`Couleur ${index + 1}`} />)}
+          </div>
+        </div>}
 
-        {(phase === 'reveal' || phase === 'done') && <div className="memoryScoreCard"><span>TON SCORE</span><strong>{score}<small>/10</small></strong></div>}
-        {phase === 'done' && <button className="primary" onClick={start}>REJOUER</button>}
-        <ChallengeButton onClick={() => shareChallenge('memory', phase === 'done' ? `J’ai retrouvé ${score}/10 couleurs sur KLIIK. Tu fais mieux ?` : 'Je te défie au jeu Mémoire de KLIIK. Combien de couleurs vas-tu retrouver ?', phase === 'done' ? String(score) : undefined)} />
+        {phase === 'answer' && <button className="primary" disabled={!canValidate} onClick={validate}>VALIDER</button>}
+
+        {phase === 'reveal' && revealed > 0 && <div className={`memoryVerdict ${currentCorrect ? 'good' : 'bad'}`}>
+          <strong>{currentCorrect ? '✓ BONNE RÉPONSE' : '✕ MAUVAISE RÉPONSE'}</strong>
+          <span>Bille {revealed} · score provisoire {score}/10</span>
+        </div>}
+
+        {phase === 'done' && <>
+          <div className={`memoryFinal ${firstError === null ? 'win' : 'lose'}`}>
+            <strong>{firstError === null ? 'VICTOIRE' : `PERDU À LA BILLE ${firstError + 1}`}</strong>
+            <span>{score}/10 bonnes réponses au total</span>
+          </div>
+          <EndActions replay={start} challenge={() => shareChallenge('memory', firstError === null ? 'J’ai fait un sans-faute 10/10 à Mémoire sur KLIIK. Tu peux faire pareil ?' : `J’ai trouvé ${score}/10 couleurs à Mémoire sur KLIIK. Tu peux me battre ?`, String(score))} />
+        </>}
       </>}
     </div>
   );
